@@ -7,12 +7,10 @@ import com.pretzel.dev.villagertradelimiter.database.DatabaseManager;
 import com.pretzel.dev.villagertradelimiter.listeners.InventoryListener;
 import com.pretzel.dev.villagertradelimiter.listeners.VillagerListener;
 import com.pretzel.dev.villagertradelimiter.settings.ConfigUpdater;
-import com.pretzel.dev.villagertradelimiter.lib.Metrics;
 import com.pretzel.dev.villagertradelimiter.lib.Util;
 import com.pretzel.dev.villagertradelimiter.listeners.PlayerListener;
 import com.pretzel.dev.villagertradelimiter.settings.Lang;
 import com.pretzel.dev.villagertradelimiter.settings.Settings;
-import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -24,9 +22,8 @@ import java.io.IOException;
 import java.util.*;
 
 public class VillagerTradeLimiter extends JavaPlugin {
-    public static final String PLUGIN_NAME = "VillagerTradeLimiter";
+    public static final String PLUGIN_NAME = "VillagerTrade";
     public static final String PREFIX = ChatColor.GOLD+"["+PLUGIN_NAME+"] ";
-    private static final int BSTATS_ID = 9829;
 
     //Settings
     private FileConfiguration cfg;
@@ -47,7 +44,6 @@ public class VillagerTradeLimiter extends JavaPlugin {
         this.getConfig().options().copyDefaults();
         this.saveDefaultConfig();
         this.loadSettings();
-        this.loadBStats();
 
         //Register commands and listeners
         this.registerCommands();
@@ -81,13 +77,6 @@ public class VillagerTradeLimiter extends JavaPlugin {
         if(this.databaseManager == null) this.databaseManager = new DatabaseManager(this);
         else onDisable();
         this.databaseManager.load();
-    }
-
-    /** Load and initialize the bStats class with the plugin id */
-    private void loadBStats() {
-        if(this.cfg.getBoolean("bStats", true)) {
-            new Metrics(this, BSTATS_ID);
-        }
     }
 
     /** Registers plugin commands */

@@ -12,6 +12,8 @@ import com.pretzel.dev.villagertradelimiter.wrappers.VillagerWrapper;
 import java.time.Instant;
 import java.util.Date;
 import java.util.List;
+
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.configuration.ConfigurationSection;
@@ -40,56 +42,65 @@ public class PlayerListener implements Listener {
     /** Handles when a player begins trading with a villager */
     @EventHandler
     public void onPlayerBeginTrading(final PlayerInteractEntityEvent event) {
-        if(event.isCancelled()) return; //Skips when event is already cancelled
-        if(!(event.getRightClicked() instanceof Villager)) return; //Skips non-villager entities
+        if (event.isCancelled()) return;
+        if (!(event.getRightClicked() instanceof Villager villager)) return;
 
         final Player player = event.getPlayer();
-        final Villager villager = (Villager)event.getRightClicked();
 
-        //Skips when the villager is in a disabled world
-        if(instance.getCfg().getStringList("DisableWorlds").contains(villager.getWorld().getName())) return;
+        // Check if villager trading is disabled in the config
+        if (instance.getCfg().getStringList("DisableWorlds").contains(villager.getWorld().getName())) return;
 
-        //Skips when player is holding an ignored item
         ItemStack heldItem = player.getInventory().getItem(event.getHand());
-        if(heldItem != null) {
+        if (heldItem != null) {
             Material heldItemType = heldItem.getType();
-            for(String ignoredType : instance.getCfg().getStringList("IgnoreHeldItems")) {
-                if(heldItemType.equals(Material.matchMaterial(ignoredType))) return;
+            for (String ignoredType : instance.getCfg().getStringList("IgnoreHeldItems")) {
+                if (heldItemType.equals(Material.matchMaterial(ignoredType))) return;
             }
         }
-        if(settings.shouldSkipNPC(event.getPlayer()) || settings.shouldSkipNPC(villager)) return; //Skips NPCs
-        if(villager.getProfession() == Villager.Profession.NONE || villager.getProfession() == Villager.Profession.NITWIT || villager.getRecipeCount() == 0) return; //Skips non-trading villagers
 
-        //DisableTrading feature
-        if(instance.getCfg().isBoolean("DisableTrading")) {
-            //If all trading is disabled
-            if(instance.getCfg().getBoolean("DisableTrading", false)) {
+        if (settings.shouldSkipNPC(player) || settings.shouldSkipNPC(villager)) return;
+        if (villager.getProfession() == Villager.Profession.NONE ||
+                villager.getProfession() == Villager.Profession.NITWIT ||
+                villager.getRecipeCount() == 0) return;
+
+        // Handle job locking issue
+        if (villager.getVillagerLevel() == 1 && villager.getProfession() != Villager.Profession.NONE) {
+            // Reset job site if no trade is completed
+            Bukkit.getScheduler().runTaskLater(instance, () -> {
+                if (villager.getVillagerLevel() == 1 && villager.getRecipeCount() == 0) {
+                    villager.setProfession(Villager.Profession.NONE);
+                    villager.setVillagerLevel(0); // Reset to ensure no locking occurs
+                }
+            }, 20L); // Delay ensures the interaction completes first
+        }
+
+        if (instance.getCfg().isBoolean("DisableTrading")) {
+            if (instance.getCfg().getBoolean("DisableTrading", false)) {
                 event.setCancelled(true);
                 return;
             }
         } else {
-            //If trading in the world the player is in is disabled
             final List<String> disabledWorlds = instance.getCfg().getStringList("DisableTrading");
-            final String world = event.getPlayer().getWorld().getName();
-            for(String disabledWorld : disabledWorlds) {
-                if(world.equals(disabledWorld)) {
+            final String world = player.getWorld().getName();
+            for (String disabledWorld : disabledWorlds) {
+                if (world.equals(disabledWorld)) {
                     event.setCancelled(true);
                     return;
                 }
             }
         }
 
-        //Cancel the original event, and open the adjusted trade view
-        //event.setCancelled(true);
-        if(!instance.getPlayerData().containsKey(player.getUniqueId())) {
+        // Your trade view logic here
+        if (!instance.getPlayerData().containsKey(player.getUniqueId())) {
             instance.getPlayerData().put(player.getUniqueId(), new PlayerData());
         }
-        if(!instance.getPlayerData().containsKey(villager.getUniqueId())) {
+        if (!instance.getPlayerData().containsKey(villager.getUniqueId())) {
             instance.getPlayerData().put(villager.getUniqueId(), new PlayerData());
         }
 
         this.see(villager, player, player);
     }
+
 
     /**
      * Opens the villager's trading menu, with the adjusted trades of another player (or the same player)

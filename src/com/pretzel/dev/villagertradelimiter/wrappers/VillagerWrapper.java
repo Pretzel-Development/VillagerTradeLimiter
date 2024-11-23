@@ -2,8 +2,10 @@ package com.pretzel.dev.villagertradelimiter.wrappers;
 
 import de.tr7zw.changeme.nbtapi.NBTCompound;
 import de.tr7zw.changeme.nbtapi.NBTCompoundList;
+import de.tr7zw.changeme.nbtapi.NBTContainer;
 import de.tr7zw.changeme.nbtapi.NBTEntity;
 import de.tr7zw.changeme.nbtapi.iface.ReadWriteNBT;
+import org.bukkit.Material;
 import org.bukkit.entity.Villager;
 import org.bukkit.inventory.ItemStack;
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -79,12 +81,52 @@ public class VillagerWrapper {
 
     /** Resets the villager's NBT data to default */
     public void reset() {
-        //Reset the recipes back to their default ingredients, MaxUses, and discounts
-        for(RecipeWrapper recipe : this.getRecipes()) {
+        // Reset the recipes back to their default ingredients, MaxUses, and discounts
+        for (RecipeWrapper recipe : this.getRecipes()) {
             recipe.reset();
         }
 
         this.villager.getInventory().clear();
-        this.villager.getInventory().setContents(this.contents);
+        for (ItemStack item : this.contents) {
+            // Only reset if item is not null and not AIR
+            if (item != null && item.getType() != Material.AIR) {
+                this.villager.getInventory().addItem(item);
+            }
+        }
+
+        // Log the villager's offers (for debugging purposes)
+        this.entity.getCompound("Offers").getCompoundList("Recipes").forEach(nbtCompound -> {
+            // Log relevant information for each compound in the list
+            validateAndFixCompound((NBTCompound) nbtCompound);
+        });
+    }
+
+    private void validateAndFixCompound(NBTCompound nbtCompound) {
+        NBTContainer defaultCompound = new NBTContainer();
+
+        if (!nbtCompound.hasKey("buy")) {
+            // Add a default or valid "buy" entry
+            NBTCompound defaultBuy = defaultCompound.getCompound("buy");
+            defaultBuy.setInteger("count", 1);
+            defaultBuy.setString("id", "minecraft:air");  // Use a valid default item
+        }
+        if (!nbtCompound.hasKey("sell")) {
+            // Add a default or valid "sell" entry
+            NBTCompound defaultSell = defaultCompound.getCompound("sell");
+            defaultSell.setInteger("count", 1);
+            defaultSell.setString("id", "minecraft:air");  // Use a valid default item
+        }
+        if (!nbtCompound.hasKey("id")) {
+            // Set a sensible default ID
+            defaultCompound.setString("id", null);  // Use a valid default id if applicable
+        }
+        // Add further necessary fields and default values as needed
+        // Example: if there's supposed to be an "xp" field
+        if (!nbtCompound.hasKey("xp")) {
+            defaultCompound.setInteger("xp", 1);  // Default experience value
+        }
+
+        // Merge the default compound with the existent one
+        nbtCompound.mergeCompound(defaultCompound);
     }
 }
