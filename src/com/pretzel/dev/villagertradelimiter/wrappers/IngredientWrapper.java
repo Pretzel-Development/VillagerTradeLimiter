@@ -1,6 +1,7 @@
 package com.pretzel.dev.villagertradelimiter.wrappers;
 
 import de.tr7zw.changeme.nbtapi.NBTCompound;
+import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 
 public class IngredientWrapper {
@@ -25,7 +26,24 @@ public class IngredientWrapper {
 
     /** @param itemStack The {@link ItemStack} which will replace the item in the recipe */
     public void setItemStack(final ItemStack itemStack) {
-        recipe.setItemStack(key, itemStack);
+        // Ensure itemStack is not null or empty before set
+        if(itemStack != null && itemStack.getType() != Material.AIR) {
+            NBTCompound itemCompound = recipe.getOrCreateCompound(key);
+            itemCompound.setItemStack(key, itemStack);
+            // Validate the itemStack has all necessary keys
+            validateItemStack(itemCompound);
+
+        }
+    }
+
+    private void validateItemStack(NBTCompound itemCompound) {
+        if (!itemCompound.hasKey("id")) {
+            itemCompound.setString("id", itemStack.getType().toString().toLowerCase());
+        }
+        if (!itemCompound.hasKey("count")) {
+            itemCompound.setInteger("count", itemStack.getAmount());
+        }
+        // Add any other necessary checks here to ensure all required NBT fields are present
     }
 
     /** Resets the material ID and the amount of this ingredient to default values */
